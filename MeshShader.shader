@@ -1,13 +1,10 @@
-Shader "Coursework/FragmentDistortion"
+Shader "Coursework/MeshShader"
 {
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
-
-        // custom properties: range, then default value
-        _scale("scale", range(0.1, 1.5)) = 1 
-        _c1("c1", range(-0.1, 3)) = 1
-        _c2("c2", range(-0.1, 3)) = 0
+        _c1("c1", range(-0.5, 1)) = -0.05
+        _c2("c2", range(-0.5, 1)) = 0
     }
     SubShader
     {
@@ -34,48 +31,38 @@ Shader "Coursework/FragmentDistortion"
                 float4 vertex : SV_POSITION;
             };
 
-            v2f vert (appdata v)
-            {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
-                return o;
-            }
-
-            sampler2D _MainTex;
-
-            float _scale;
             float _c1;
             float _c2;
 
-            float2 forwardRadial(float2 uv)
+            v2f vert (appdata v)
             {
-                // p : ensure range is -1 to 1 instead of 0 to 1
-                // https://forum.unity.com/threads/center-uv-co-ordinates-glsl-cg-hlsl.452233/#post-2929008
-                float2 p = ((uv.xy * 2) - 1);
+                // test
+                //v.vertex.z += 2;
+
+                v2f o;
+                o.vertex = UnityObjectToClipPos(v.vertex);
+                o.uv = v.uv;
 
                 // cartesian --> polar
-                float theta = atan2(p.y, p.x);
-
-                // r : undistorted radius, polar coordinates form
-                float r = sqrt((p.x * p.x) + (p.y * p.y));
+                float theta = atan2(o.vertex.y, o.vertex.x);
+                float r = sqrt((o.vertex.x * o.vertex.x) + (o.vertex.y * o.vertex.y));
 
                 // f : function to distort the radius (Brown’s simplified Forward radial transform)
                 float f_r = r + (_c1 * pow(r, 3)) + (_c2 * pow(r, 5));
 
                 // polar --> cartesian, applying new radius value
-                p.x = f_r * cos(theta);
-                p.y = f_r * sin(theta);
+                o.vertex.x = f_r * cos(theta);
+                o.vertex.y = f_r * sin(theta);
 
-                // on return:
-                // 1) scale the effect
-                // 2) undo range adjustments done by p in first step
-                return ((_scale * p + 1) / 2);
+                return o;
             }
+
+            sampler2D _MainTex;
 
             fixed4 frag (v2f i) : SV_Target
             {
-                return tex2D(_MainTex, forwardRadial(i.uv));
+                fixed4 col = tex2D(_MainTex, i.uv);
+                return col;
             }
             ENDCG
         }
